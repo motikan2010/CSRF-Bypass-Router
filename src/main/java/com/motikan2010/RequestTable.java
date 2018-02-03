@@ -2,13 +2,13 @@ package com.motikan2010;
 
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
-import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 
-public class RequestTable extends AbstractTableModel implements TableModelListener {
+public class RequestTable extends DefaultTableModel implements TableModelListener {
 
     private Object[][] tableData;
 
-    private static final String[] COLUMN_NAMES = {"No", "Enable", "Host", "Method", "URL"};
+    private static final String[] COLUMN_NAMES = {"No", "", "Host", "Method", "URL"};
 
     private static final int TABLE_ROW_COUNT = 10;
     private static final int TABLE_COLUMN_COUNT = 5;
@@ -28,7 +28,6 @@ public class RequestTable extends AbstractTableModel implements TableModelListen
             tableData[i][METHOD_COLUMN_INDEX]    = "";
             tableData[i][URL_COLUMN_INDEX]       = "";
         }
-
         addTableModelListener(this);
     }
 
