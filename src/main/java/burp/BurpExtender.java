@@ -21,7 +21,7 @@ public class BurpExtender implements IBurpExtender, ITab, IContextMenuFactory {
 
         // Init Request Tab
         SwingUtilities.invokeLater(() -> {
-            requestFlowTab = RequestFlowTab.getInstance();
+            requestFlowTab = RequestFlowTab.getInstance(callbacks);
             requestFlowTab.render();
             this.iBurpExtenderCallbacks.addSuiteTab(BurpExtender.this);
         });

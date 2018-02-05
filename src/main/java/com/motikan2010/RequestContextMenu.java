@@ -25,7 +25,7 @@ public class RequestContextMenu implements MouseListener {
     @Override
     public void mouseReleased(MouseEvent e) {
         for (IHttpRequestResponse iHttpRequestResponse : iHttpRequestResponseArray) {
-            this.requestFlowTab.saveRequest(this.iExtensionHelpers.analyzeRequest(iHttpRequestResponse));
+            this.requestFlowTab.saveRequest(this.iExtensionHelpers.analyzeRequest(iHttpRequestResponse), iHttpRequestResponse);
         }
     }
 
