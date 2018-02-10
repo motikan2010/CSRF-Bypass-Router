@@ -1,6 +1,7 @@
 package com.motikan2010;
 
 import burp.*;
+import com.motikan2010.util.RequestResponseUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,13 +17,14 @@ public class RequestFlowTab extends JPanel {
     private static IBurpExtenderCallbacks iBurpExtenderCallbacks;
     private static IExtensionHelpers iExtensionHelpers;
 
+    private static RequestResponseUtils requestResponseUtils;
+
     private static final int PANEL_X = 10;
     private static final int PANEL_Y = 10;
 
     private static final int PANEL_WIDTH = 500;
     private static final int PANEL_HEIGHT = 110;
 
-    private static final String NEW_LINE = System.lineSeparator();
     private List<IRequestInfo> iRequestInfoList;
     private List<IHttpRequestResponse> iHttpRequestResponseList;
     private TextArea requestResponseTextArea;
@@ -37,6 +39,7 @@ public class RequestFlowTab extends JPanel {
     public static RequestFlowTab getInstance(IBurpExtenderCallbacks callbacks) {
         iBurpExtenderCallbacks = callbacks;
         iExtensionHelpers = callbacks.getHelpers();
+        requestResponseUtils = new RequestResponseUtils(callbacks);
         if (panel == null) {
             panel = new RequestFlowTab();
         }
@@ -128,10 +131,7 @@ public class RequestFlowTab extends JPanel {
         JButton sendButton = new JButton("Send");
         sendButton.setBounds(PANEL_X + 700, PANEL_Y - 5, 80, 30);
         sendButton.addActionListener(e -> {
-            Runnable runner = () -> {
-                sendRequest();
-            };
-            runner.run();
+            sendRequest();
         });
 
         /*
@@ -145,8 +145,9 @@ public class RequestFlowTab extends JPanel {
             [Button] Clear
          */
         JButton clearButton = new JButton("Clear");
+        clearButton.setBounds(PANEL_X + 800, PANEL_Y - 5, 80, 30);
         clearButton.addActionListener(e -> {
-
+            requestResponseTextArea.setText("");
         });
 
         add(requestTableLabel);
@@ -164,22 +165,9 @@ public class RequestFlowTab extends JPanel {
      * @param rowNum
      */
     public void selectRequest(int rowNum) {
-        IRequestInfo iRequestInfo = iRequestInfoList.get(rowNum);
         IHttpRequestResponse iHttpRequestResponse = iHttpRequestResponseList.get(rowNum);
-
-        StringBuilder stringBuilder = new StringBuilder();
-        // Get Request Headers
-        for (String header : iRequestInfo.getHeaders()) {
-            stringBuilder.append(header + NEW_LINE);
-        }
-
-        // Get Request body
-        String requestBody = getRaw(iRequestInfo, iHttpRequestResponse.getRequest());
-        if (requestBody.length() > 0) {
-            stringBuilder.append(NEW_LINE + requestBody);
-        }
-
-        requestTextArea.setText(stringBuilder.toString());
+        String fullRequest = requestResponseUtils.getRequestFull(iHttpRequestResponse);
+        requestTextArea.setText(fullRequest);
     }
 
     /**
@@ -187,7 +175,7 @@ public class RequestFlowTab extends JPanel {
      *
      * @param iRequestInfo iRequestInfo
      */
-    public void saveRequest(IRequestInfo iRequestInfo, IHttpRequestResponse iHttpRequestResponse) {
+    public void keepRequest(IRequestInfo iRequestInfo, IHttpRequestResponse iHttpRequestResponse) {
         Integer rowIndex = this.iRequestInfoList.size();
         requestTable.setValueAt(rowIndex + 1, rowIndex, RequestTable.NO_COLUMN_INDEX);
         requestTable.setValueAt(true, rowIndex, RequestTable.ENABLED_COLUMN_INDEX);
@@ -202,26 +190,29 @@ public class RequestFlowTab extends JPanel {
      *
      */
     public void sendRequest() {
-        for (IHttpRequestResponse iHttpRequestResponse : iHttpRequestResponseList) {
-            IHttpRequestResponse response = iBurpExtenderCallbacks.makeHttpRequest(iHttpRequestResponse.getHttpService(), iHttpRequestResponse.getRequest());
-            requestResponseTextArea.append(new String(response.getResponse(), StandardCharsets.UTF_8));
-        }
+        RequestThread requestThread = new RequestThread(iBurpExtenderCallbacks, iHttpRequestResponseList);
+        requestThread.start();
     }
 
-    /**
-     *
-     * @param iRequestInfo
-     * @param requestBytes
-     * @return
-     */
-    private String getRaw(IRequestInfo iRequestInfo, byte[] requestBytes) {
-        String request = null;
-        try {
-            request = new String(requestBytes, "UTF-8");
-            request = request.substring(iRequestInfo.getBodyOffset());
-        } catch (UnsupportedEncodingException e) {
-            System.out.println("Error converting string");
+    private class RequestThread extends Thread {
+        private IBurpExtenderCallbacks iBurpExtenderCallbacks;
+        private List<IHttpRequestResponse> iHttpRequestResponseList;
+
+        RequestThread(IBurpExtenderCallbacks callbacks, List<IHttpRequestResponse> iHttpRequestResponseList) {
+            this.iBurpExtenderCallbacks = callbacks;
+            this.iHttpRequestResponseList = iHttpRequestResponseList;
         }
-        return request;
+
+        /**
+         * Send Request
+         */
+        public void run() {
+            for (IHttpRequestResponse iHttpRequestResponse : this.iHttpRequestResponseList) {
+                requestResponseTextArea.append(requestResponseUtils.getRequestFull(iHttpRequestResponse) + requestResponseUtils.getNewLine());
+                // Send Request & Receive Response
+                IHttpRequestResponse response = iBurpExtenderCallbacks.makeHttpRequest(iHttpRequestResponse.getHttpService(), iHttpRequestResponse.getRequest());
+                requestResponseTextArea.append(requestResponseUtils.getResponseFull(response) + requestResponseUtils.getNewLine());
+            }
+        }
     }
 }
